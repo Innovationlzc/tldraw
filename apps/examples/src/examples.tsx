@@ -35,6 +35,23 @@ const getExamplesForCategory = (category: Category) =>
 			return a.priority - b.priority
 		})
 
+// 新增 Tool Chain Editor 示例
+const toolChainEditorExample: Example = {
+	title: 'Tool Chain Editor (自动生成&交互)',
+	description: '自动生成和交互式编辑 AI agent 工具链的 UI 示例',
+	details: '演示如何根据 LLM 返回的工具链数据自动生成交互式流程图，并支持用户拖拽、编辑。',
+	path: '/tool-chain-editor',
+	codeUrl: 'https://github.com/tldraw/tldraw',
+	hide: false,
+	category: 'ui',
+	priority: 0,
+	componentFile: './examples/tool-chain-editor/ToolChainEditorExample.tsx',
+	keywords: ['tool chain', 'AI agent', 'react-flow'],
+	multiplayer: false,
+	loadComponent: () =>
+		import('./examples/tool-chain-editor/ToolChainEditorExample').then((m) => m.default),
+}
+
 const categories = [
 	['getting-started', 'Getting started'],
 	['configuration', 'Configuration'],
@@ -50,5 +67,8 @@ const categories = [
 
 export const examples = categories.map(([category, title]) => ({
 	id: title,
-	value: getExamplesForCategory(category as Category),
+	value: [
+		...(category === 'ui' ? [toolChainEditorExample] : []),
+		...getExamplesForCategory(category as Category),
+	],
 }))
