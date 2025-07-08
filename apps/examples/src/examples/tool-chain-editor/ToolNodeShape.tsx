@@ -184,7 +184,7 @@ export class ToolNodeShapeUtil extends ShapeUtil<IToolNodeShape> {
 								const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
 									method: 'POST',
 									headers: {
-										Authorization: `sk-26d1dcdacd4148b0a27b724af6f8daf7`, // TODO: Replace with your DeepSeek API key
+										Authorization: `**`, // TODO: Replace with your DeepSeek API key
 										'Content-Type': 'application/json',
 									},
 									body: JSON.stringify({
