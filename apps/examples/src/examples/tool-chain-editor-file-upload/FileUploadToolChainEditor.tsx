@@ -12,95 +12,9 @@ import ReactFlow, {
 	useNodesState,
 } from 'react-flow-renderer'
 import 'react-flow-renderer/dist/style.css'
+import InputNodeWithUpload from './InputNodeWithUpload'
+import { callLLM } from './utils/llmClient'
 
-// DeepSeek API call function
-async function callDeepSeekAPI(question: string): Promise<string> {
-	const apiKey = 'sk-ff242fb3bfd546d8a81aba2992d9808a'
-	// 'sk-26d1dcdacd4148b0a27b724af6f8daf7' // substitute your DeepSeek API Key
-
-	// Build the prompt to help the LLM better understand the task
-	const systemPrompt = `You are a helpful AI assistant. Please provide clear, concise, and accurate answers to user questions. 
-If the question is about coding or technical topics, provide practical examples when possible.
-If the question is unclear, ask for clarification.`
-
-	const userPrompt = `User Query: ${question}
-
-Please provide a helpful response:`
-
-	const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${apiKey}`,
-		},
-		body: JSON.stringify({
-			model: 'deepseek-chat',
-			messages: [
-				{ role: 'system', content: systemPrompt },
-				{ role: 'user', content: userPrompt },
-			],
-			max_tokens: 256, // 限制回复最大长度
-			temperature: 0.7,
-		}),
-	})
-	if (!response.ok) throw new Error('API error')
-	const data = await response.json()
-	return data.choices?.[0]?.message?.content || '无回答'
-}
-
-// 自定义节点类型
-function InputNode({ data, id }: { data: any; id: string }) {
-	return (
-		<div
-			style={{
-				padding: 18,
-				background: '#fff',
-				border: '2px solid #bbb',
-				borderRadius: 10,
-				minWidth: 260,
-				maxWidth: 400,
-			}}
-		>
-			<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-				<strong style={{ fontSize: 28 }}>Input</strong>
-				<button
-					onClick={() => data.onDeleteNode(id)}
-					style={{
-						background: '#ff4444',
-						color: 'white',
-						border: 'none',
-						borderRadius: '50%',
-						width: 24,
-						height: 24,
-						cursor: 'pointer',
-						fontSize: 12,
-					}}
-				>
-					×
-				</button>
-			</div>
-			<input
-				style={{
-					width: '100%',
-					marginTop: 12,
-					fontSize: 20,
-					padding: 6,
-					borderRadius: 6,
-					border: '1px solid #ccc',
-				}}
-				value={data.value}
-				onChange={(e) => data.onChange(e.target.value)}
-				onKeyDown={(e) => {
-					if (e.key === 'Enter') {
-						data.onSubmit()
-					}
-				}}
-				placeholder="Enter Query (Press Enter to submit)"
-			/>
-			<Handle type="source" position={Position.Right} />
-		</div>
-	)
-}
 
 function AgentNode({ data, id }: { data: any; id: string }) {
 	return (
@@ -244,7 +158,7 @@ function ProcessNode({ data, id }: { data: any; id: string }) {
 }
 
 const nodeTypes = {
-	inputNode: InputNode,
+	inputNode: InputNodeWithUpload,
 	agentNode: AgentNode,
 	outputNode: OutputNode,
 	processNode: ProcessNode,
@@ -373,6 +287,8 @@ export default function ToolChainEditor() {
 				onChange: (val: string) => handleInputChange(newNodeId, val),
 				onSubmit: () => handleSubmit(newNodeId),
 				onDeleteNode: handleDeleteNode,
+				onUploadFile: (file: File) => handleUploadFile(newNodeId, file),
+
 			},
 			position: { x: Math.random() * 400 + 100, y: Math.random() * 300 + 100 },
 		}
@@ -443,7 +359,11 @@ export default function ToolChainEditor() {
 		)
 		// 调用 API 并更新 agent 节点 result
 		try {
-			const result = await callDeepSeekAPI(val)
+
+			const result = await callLLM(val, {
+				provider: 'openai', // or 'deepseek'
+				apiKey: 'YOUR-API-KEY',
+				})
 			setNodes((nds) =>
 				nds.map((node) =>
 					connectedAgentIds.includes(node.id)
@@ -462,6 +382,41 @@ export default function ToolChainEditor() {
 		}
 	}
 
+	function handleUploadFile(nodeId: string, file: File) {
+		const reader = new FileReader()
+		const isImage = file.type.startsWith('image/')
+
+		reader.onload = () => {
+			const content = reader.result
+
+			setNodes((nds) =>
+				nds.map((node) =>
+					node.id === nodeId
+						? {
+								...node,
+								data: {
+									...node.data,
+									file,
+									imagePreview: isImage ? content : null,
+									value: isImage
+										? `[Image uploaded: ${file.name}]`
+										: typeof content === 'string'
+											? content
+											: '',
+								},
+						}
+						: node
+				)
+			)
+	}
+
+	if (isImage) {
+		reader.readAsDataURL(file) // creates base64 image for preview
+	} else {
+		reader.readAsText(file)
+	}
+	}
+
 	// 保证所有节点的 data 事件都带上 id
 	useEffect(() => {
 		setNodes((nds) =>
@@ -474,6 +429,7 @@ export default function ToolChainEditor() {
 							onChange: (val: string) => handleInputChange(node.id, val),
 							onSubmit: () => handleSubmit(node.id),
 							onDeleteNode: handleDeleteNode,
+							onUploadFile: (file: File) => handleUploadFile(node.id, file),
 						},
 					}
 				}
