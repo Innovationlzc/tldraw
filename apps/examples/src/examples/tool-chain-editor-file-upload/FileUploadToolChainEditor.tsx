@@ -13,7 +13,7 @@ import ReactFlow, {
 } from 'react-flow-renderer'
 import 'react-flow-renderer/dist/style.css'
 import InputNodeWithUpload from './InputNodeWithUpload'
-import { callLLM } from './utils/llmClient'
+import { callLLM, callOpenAIVision } from './utils/llmClient'
 
 
 function AgentNode({ data, id }: { data: any; id: string }) {
@@ -339,11 +339,16 @@ export default function ToolChainEditor() {
 	}
 
 	// 按回车时，找到与该 input 相连的 agent 节点，只更新该 agent 节点
+	// @dinara: modified to handle file uploads and different API calls
 	async function handleSubmit(inputId: string) {
 		const inputNode = nodes.find((n) => n.id === inputId)
 		if (!inputNode) return
-		const val = inputNode.data.value
-		if (!val.trim()) return
+		// const val = inputNode.data.value
+		const userText = inputNode.data.value
+		const image = inputNode.data.imagePreview
+		const file = inputNode.data.file
+
+		if (!userText.trim()) return
 		// 找到所有与该 input 相连的 agent 节点
 		const connectedAgentIds = edges
 			.filter((e) => e.source === inputId)
@@ -360,10 +365,21 @@ export default function ToolChainEditor() {
 		// 调用 API 并更新 agent 节点 result
 		try {
 
-			const result = await callLLM(val, {
+			let result = ''
+
+			if (image) {
+				result = await callOpenAIVision({
+				apiKey: 'YOUR-API-KEY',
+				imageBase64Url: image,
+				textPrompt: userText || 'Please analyze this image',
+			})
+			} else {
+				result = await callLLM(userText, {
 				provider: 'openai', // or 'deepseek'
 				apiKey: 'YOUR-API-KEY',
 				})
+			}
+
 			setNodes((nds) =>
 				nds.map((node) =>
 					connectedAgentIds.includes(node.id)

@@ -57,3 +57,54 @@ export async function callLLM(question: string, options: LLMOptions): Promise<st
 	const data = await response.json()
 	return data.choices?.[0]?.message?.content?.trim() || 'No response.'
 }
+
+
+
+export async function callOpenAIVision({
+	apiKey,
+	imageBase64Url,
+	textPrompt,
+	model = 'gpt-4o',
+}: {
+	apiKey: string
+	imageBase64Url: string // "data:image/png;base64,..."
+	textPrompt: string
+	model?: 'gpt-4o' | 'gpt-4-turbo'
+}): Promise<string> {
+	const url = 'https://api.openai.com/v1/chat/completions'
+
+	const headers = {
+		'Content-Type': 'application/json',
+		Authorization: `Bearer ${apiKey}`,
+	}
+
+	const body = {
+		model,
+		messages: [
+			{
+				role: 'user',
+				content: [
+					{ type: 'text', text: textPrompt || 'Please analyze this image.' },
+					{ type: 'image_url', image_url: { url: imageBase64Url } },
+				],
+			},
+		],
+		max_tokens: 256,
+		temperature: 0.7,
+	}
+
+	const response = await fetch(url, {
+		method: 'POST',
+		headers,
+		body: JSON.stringify(body),
+	})
+
+	if (!response.ok) {
+		const errorText = await response.text()
+		console.error('Vision API error:', response.status, errorText)
+		throw new Error('OpenAI Vision API request failed')
+	}
+
+	const data = await response.json()
+	return data.choices?.[0]?.message?.content?.trim() || 'No response'
+}
