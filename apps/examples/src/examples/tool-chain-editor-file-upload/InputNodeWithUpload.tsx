@@ -1,13 +1,43 @@
-import React from 'react'
+import React, { useCallback, useState } from 'react'
 import { Handle, Position } from 'react-flow-renderer'
 
 export default function InputNodeWithUpload({ data, id }: { data: any; id: string }) {
+	const [isDragging, setIsDragging] = useState(false)
+	const handleDrop = useCallback(
+	(e: React.DragEvent<HTMLDivElement>) => {
+		e.preventDefault()
+		setIsDragging(false)
+		const file = e.dataTransfer.files?.[0]
+		if (file) {
+			data.onUploadFile(file)
+		}
+	},
+	[data]
+)
+	
 	return (
+		// <div
+		// 	style={{
+		// 		padding: 18,
+		// 		background: '#fff',
+		// 		border: '2px solid #bbb',
+		// 		borderRadius: 10,
+		// 		minWidth: 260,
+		// 		maxWidth: 400,
+		// 	}}
+		// >
 		<div
+			// drag-and-drop handlers
+			onDragOver={(e) => {
+				e.preventDefault()
+				setIsDragging(true)
+			}}
+			onDragLeave={() => setIsDragging(false)}
+			onDrop={handleDrop}
 			style={{
 				padding: 18,
 				background: '#fff',
-				border: '2px solid #bbb',
+				border: isDragging ? '2px dashed #007aff' : '2px solid #bbb', // dashed border on drag
 				borderRadius: 10,
 				minWidth: 260,
 				maxWidth: 400,

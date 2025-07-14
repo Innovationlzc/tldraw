@@ -13,7 +13,7 @@ import ReactFlow, {
 } from 'react-flow-renderer'
 import 'react-flow-renderer/dist/style.css'
 import InputNodeWithUpload from './InputNodeWithUpload'
-import { callLLM, callOpenAIVision } from './utils/llmClient'
+import { callLLM, callLLMUnified, callOpenAIVision } from './utils/llmClient'
 
 
 function AgentNode({ data, id }: { data: any; id: string }) {
@@ -365,20 +365,12 @@ export default function ToolChainEditor() {
 		// 调用 API 并更新 agent 节点 result
 		try {
 
-			let result = ''
 
-			if (image) {
-				result = await callOpenAIVision({
-				apiKey: 'YOUR-API-KEY',
-				imageBase64Url: image,
-				textPrompt: userText || 'Please analyze this image',
+			const result = await callLLMUnified(userText, {
+			provider: 'openai',
+			apiKey: 'YOUR-API-KEY',
+			file: file,
 			})
-			} else {
-				result = await callLLM(userText, {
-				provider: 'openai', // or 'deepseek'
-				apiKey: 'YOUR-API-KEY',
-				})
-			}
 
 			setNodes((nds) =>
 				nds.map((node) =>

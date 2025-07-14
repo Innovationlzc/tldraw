@@ -2,13 +2,65 @@
 
 type Provider = 'openai' | 'deepseek'
 
-interface LLMOptions {
-	provider: Provider
+// interface LLMOptions {
+// 	provider: Provider
+// 	apiKey: string
+// 	model?: string
+// 	systemPrompt?: string
+// 	maxTokens?: number
+// 	temperature?: number
+// }
+
+export interface LLMOptions {
+	provider: 'openai' | 'deepseek'
 	apiKey: string
 	model?: string
 	systemPrompt?: string
 	maxTokens?: number
 	temperature?: number
+	file?: File
+}
+
+export async function callLLMUnified(question: string, options: LLMOptions): Promise<string> {
+	const {
+		provider,
+		apiKey,
+		model = provider === 'openai' ? 'gpt-4o' : 'deepseek-chat',
+		systemPrompt = `You are a helpful AI assistant. Please provide clear, concise, and accurate answers.`,
+		maxTokens = 256,
+		temperature = 0.7,
+		file,
+	} = options
+
+	// If we have an image file and it's an OpenAI model, call vision API
+	if (file && provider === 'openai' && file.type.startsWith('image/')) {
+		const imageBase64Url = await convertToDataUrl(file)
+
+		return callOpenAIVision({
+			apiKey: apiKey,
+			imageBase64Url,
+			textPrompt: question,
+			model,
+		})
+	}
+
+	// Otherwise fallback to text-based LLM call
+	
+		return callLLM(question, {
+		provider: 'openai', // or 'deepseek'
+		apiKey: apiKey,
+		})
+	}
+
+
+// Helper for reading base64 data URL from File
+export function convertToDataUrl(file: File): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader()
+		reader.onload = () => resolve(reader.result as string)
+		reader.onerror = reject
+		reader.readAsDataURL(file)
+	})
 }
 
 export async function callLLM(question: string, options: LLMOptions): Promise<string> {
@@ -69,7 +121,7 @@ export async function callOpenAIVision({
 	apiKey: string
 	imageBase64Url: string // "data:image/png;base64,..."
 	textPrompt: string
-	model?: 'gpt-4o' | 'gpt-4-turbo'
+	model?: string
 }): Promise<string> {
 	const url = 'https://api.openai.com/v1/chat/completions'
 
