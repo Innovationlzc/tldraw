@@ -367,8 +367,8 @@ export default function ToolChainEditor() {
 
 
 			const result = await callLLMUnified(userText, {
-			provider: 'openai',
-			apiKey: 'YOUR-API-KEY',
+			provider: 'openai', // or 'deepseek'
+			apiKey: 'YOUR_API_KEY',
 			file: file,
 			})
 

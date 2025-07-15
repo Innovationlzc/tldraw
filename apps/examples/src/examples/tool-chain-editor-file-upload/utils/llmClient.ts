@@ -47,7 +47,7 @@ export async function callLLMUnified(question: string, options: LLMOptions): Pro
 	// Otherwise fallback to text-based LLM call
 	
 		return callLLM(question, {
-		provider: 'openai', // or 'deepseek'
+		provider: provider, // 'openai' or 'deepseek'
 		apiKey: apiKey,
 		})
 	}
