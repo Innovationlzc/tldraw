@@ -1,6 +1,6 @@
 import react from '@vitejs/plugin-react-swc'
 import path from 'path'
-import { PluginOption, defineConfig } from 'vite'
+import { PluginOption, defineConfig, loadEnv } from 'vite' // @supabase support: added loadEnv
 
 const PR_NUMBER = process.env.VERCEL_GIT_PULL_REQUEST_ID
 
@@ -46,42 +46,50 @@ const TLDRAW_BEMO_URL_STRING =
 				? `https://pr-${PR_NUMBER}-demo.tldraw.xyz`
 				: undefined
 
-export default defineConfig(({ mode }) => ({
-	plugins: [react({ tsDecorators: true }), exampleReadmePlugin()],
-	root: path.join(__dirname, 'src'),
-	publicDir: path.join(__dirname, 'public'),
-	build: {
-		outDir: path.join(__dirname, 'dist'),
-		assetsInlineLimit: 0,
-		target: 'es2022',
-	},
-	esbuild: {
-		target: 'es2022',
-	},
-	server: {
-		port: 5420,
-		allowedHosts: true,
-	},
-	clearScreen: false,
-	optimizeDeps: {
-		exclude: ['@tldraw/assets'],
-		esbuildOptions: {
+// @supabase support: defineConfig now uses a function so we can access `mode`
+export default defineConfig(({ mode }) => {
+		const envVars = loadEnv(mode, process.cwd(), '') // loads .env.local
+	return {
+		plugins: [react({ tsDecorators: true }), exampleReadmePlugin()],
+		root: path.join(__dirname, 'src'),
+		publicDir: path.join(__dirname, 'public'),
+		build: {
+			outDir: path.join(__dirname, 'dist'),
+			assetsInlineLimit: 0,
 			target: 'es2022',
 		},
-	},
-	define: {
-		'process.env.TLDRAW_ENV': JSON.stringify(process.env.VERCEL_ENV ?? 'development'),
-		'process.env.TLDRAW_DEPLOY_ID': JSON.stringify(
-			process.env.VERCEL_GIT_COMMIT_SHA ?? `local-${Date.now()}`
-		),
-		'process.env.TLDRAW_BEMO_URL': urlOrLocalFallback(mode, TLDRAW_BEMO_URL_STRING, 8989),
-		'process.env.TLDRAW_IMAGE_URL': urlOrLocalFallback(
-			mode,
-			env === 'development' ? undefined : 'https://images.tldraw.xyz',
-			8786
-		),
-	},
-}))
+		esbuild: {
+			target: 'es2022',
+		},
+		server: {
+			port: 5420,
+			allowedHosts: true,
+		},
+		clearScreen: false,
+		optimizeDeps: {
+			exclude: ['@tldraw/assets'],
+			esbuildOptions: {
+				target: 'es2022',
+			},
+		},
+		define: {
+			'process.env.TLDRAW_ENV': JSON.stringify(process.env.VERCEL_ENV ?? 'development'),
+			'process.env.TLDRAW_DEPLOY_ID': JSON.stringify(
+				process.env.VERCEL_GIT_COMMIT_SHA ?? `local-${Date.now()}`
+			),
+			'process.env.TLDRAW_BEMO_URL': urlOrLocalFallback(mode, TLDRAW_BEMO_URL_STRING, 8989),
+			'process.env.TLDRAW_IMAGE_URL': urlOrLocalFallback(
+				mode,
+				env === 'development' ? undefined : 'https://images.tldraw.xyz',
+				8786
+			),
+			// Inject Supabase env vars into the client
+			'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(envVars.VITE_SUPABASE_URL),
+			'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(envVars.VITE_SUPABASE_ANON_KEY),
+
+		},
+}
+})
 
 function exampleReadmePlugin(): PluginOption {
 	return {
