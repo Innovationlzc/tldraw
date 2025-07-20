@@ -14,6 +14,10 @@ import ReactFlow, {
 import 'react-flow-renderer/dist/style.css'
 import InputNodeWithUpload from './InputNodeWithUpload'
 import { callLLM, callLLMUnified, callOpenAIVision } from './utils/llmClient'
+import { useGlobalFileUploadToStorage } from './utils/useGlobalFileUploadToStorage'
+import { useCurrentUserId, useSupabaseUser } from './lib/supabaseUtils'
+import { supabase } from './lib/supabaseClient'
+import { FileUploadConfirmDialog } from './FileUploadConfirmDialog'
 
 
 function AgentNode({ data, id }: { data: any; id: string }) {
@@ -273,7 +277,24 @@ export default function ToolChainEditor() {
 	]
 	const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
 	const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+	// const [uploadPopup, setUploadPopup] = useState<{ file: File | null; anchorRef: any } | null>(null)
+	const [uploadPopup, setUploadPopup] = useState<{file: File
+	anchorRef: React.RefObject<HTMLElement>
+	} | null>(null)
+	// console.log('🔄 ToolChainEditor rendered, uploadPopup =', uploadPopup)
 
+	// Supabase user and upload logic
+	const user = useSupabaseUser()
+	// const { uploadFile } = useGlobalFileUploadToStorage(user?.id || '')
+	const userId = user?.id || '' 
+	// if (!userId) {
+	// 	console.warn('No user ID found, uploads will be anonymous.')
+	// }
+	const { uploadFile } = useGlobalFileUploadToStorage(userId)
+
+	// const [pendingFile, setPendingFile] = useState<File | null>(null)
+	// const [dialogOpen, setDialogOpen] = useState(false)
+	
 	// 添加节点
 	function handleAddNode(type: string) {
 		const newNodeId = `${type}-${nodeCounter}`
@@ -416,6 +437,10 @@ export default function ToolChainEditor() {
 						: node
 				)
 			)
+			// Prompt upload confirmation
+			console.log('🔥 handleUploadFile called with file:', file)
+			// setPendingFile(file)
+			// setDialogOpen(true)
 	}
 
 	if (isImage) {
@@ -423,6 +448,51 @@ export default function ToolChainEditor() {
 	} else {
 		reader.readAsText(file)
 	}
+	}
+
+	
+	// async function confirmUploadToStorage() {
+	// 	console.log('🔁 Upload started for:', pendingFile)
+
+	// 	if (!pendingFile || !user || !user.id) return
+	// 	try {
+	// 		console.log('Uploading to Supabase:', pendingFile.name)
+	// 		const result = uploadFile(pendingFile)
+	// 		console.log('✅ Upload result:', result)
+	// 		alert(`Uploaded: ${pendingFile.name}`)
+	// 	} catch (err) {
+	// 		console.error('Upload failed:', err)
+	// 		alert('Upload failed. See console for details.')
+	// 	} finally {
+	// 		setDialogOpen(false)
+	// 		setPendingFile(null)
+	// 	}
+	// }
+
+	// function cancelUploadToStorage() {
+	// 	console.log('Cancelled upload for:', pendingFile)
+	// 	setDialogOpen(false)
+	// 	setPendingFile(null)
+	// }
+
+	function handleUploadRequest(file: any, anchorRef: any) {
+		setUploadPopup({ file, anchorRef })
+	}
+
+	function confirmUploadToStorage() {
+		if (!uploadPopup?.file) return
+
+		console.log('🟡 Uploading:', uploadPopup.file.name)
+		uploadFile(uploadPopup.file)
+		setUploadPopup(null)
+		console.log('✅ Cleared uploadPopup after upload')
+	}
+
+	function cancelUploadToStorage() {
+		console.log('❌ Upload cancelled')
+		setUploadPopup(null)
+		setNodes((nodes) => [...nodes])
+
 	}
 
 	// 保证所有节点的 data 事件都带上 id
@@ -438,6 +508,7 @@ export default function ToolChainEditor() {
 							onSubmit: () => handleSubmit(node.id),
 							onDeleteNode: handleDeleteNode,
 							onUploadFile: (file: File) => handleUploadFile(node.id, file),
+							onUploadRequested: handleUploadRequest,
 						},
 					}
 				}
@@ -455,6 +526,15 @@ export default function ToolChainEditor() {
 		)
 	}, [nodes, setNodes])
 
+// useEffect(() => {
+//   supabase.auth.getSession().then(({ data: { session } }) => {
+//     console.log('✅ Supabase Session:', session)
+//     if (!session) {
+//       console.warn('⚠️ No active session. You might need to sign in.')
+//     }
+//   })
+  
+// }, [])
 	return (
 		<div
 			style={{
@@ -482,6 +562,24 @@ export default function ToolChainEditor() {
 				<Controls />
 				<Background />
 			</ReactFlow>
+			{/* Confirmation Dialog */}
+			{/* {pendingFile && (
+				<FileUploadConfirmDialog
+					file={pendingFile}
+					onConfirm={confirmUploadToStorage}
+					onCancel={cancelUploadToStorage}
+				/>
+			)} */}
+			{uploadPopup !== null ? (
+				<FileUploadConfirmDialog
+					file={uploadPopup.file}
+					anchorRef={uploadPopup.anchorRef}
+					onConfirm={confirmUploadToStorage}
+					onCancel={cancelUploadToStorage}
+				/>
+			) : null}
+			
+
 		</div>
 	)
 }

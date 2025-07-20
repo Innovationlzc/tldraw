@@ -1,8 +1,18 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Handle, Position } from 'react-flow-renderer'
 
 export default function InputNodeWithUpload({ data, id }: { data: any; id: string }) {
 	const [isDragging, setIsDragging] = useState(false)
+
+	const nodeRef = useRef<HTMLDivElement>(null)
+
+	useEffect(() => {
+		if (data.file && data.onUploadRequested) {
+			data.onUploadRequested(data.file, nodeRef)
+		}
+	}, [data.file])
+
+
 	const handleDrop = useCallback(
 	(e: React.DragEvent<HTMLDivElement>) => {
 		e.preventDefault()
@@ -14,18 +24,9 @@ export default function InputNodeWithUpload({ data, id }: { data: any; id: strin
 	},
 	[data]
 )
-	
+
+
 	return (
-		// <div
-		// 	style={{
-		// 		padding: 18,
-		// 		background: '#fff',
-		// 		border: '2px solid #bbb',
-		// 		borderRadius: 10,
-		// 		minWidth: 260,
-		// 		maxWidth: 400,
-		// 	}}
-		// >
 		<div
 			// drag-and-drop handlers
 			onDragOver={(e) => {
@@ -111,8 +112,8 @@ export default function InputNodeWithUpload({ data, id }: { data: any; id: strin
 				/>
 			)}
 
-
 			<Handle type="source" position={Position.Right} />
+
 		</div>
 	)
 }

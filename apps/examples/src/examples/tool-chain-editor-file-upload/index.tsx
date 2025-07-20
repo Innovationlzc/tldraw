@@ -1,5 +1,6 @@
 import OnlyEditorExample from '../only-editor/OnlyEditorExample'
 import FileUploadToolChainEditor from './FileUploadToolChainEditor'
+import SupabaseConnectionTest from './utils/SupabaseConnectionTest'
 
 export default function FileUploadToolChainEditorExample() {
 	return (
@@ -25,6 +26,7 @@ export default function FileUploadToolChainEditorExample() {
 			>
 				<h2 style={{ marginBottom: 16 }}>Tool Chain Editor (Demo)</h2>
 				<FileUploadToolChainEditor />
+				{/* <SupabaseConnectionTest /> */}
 			</div>
 		</div>
 	)
