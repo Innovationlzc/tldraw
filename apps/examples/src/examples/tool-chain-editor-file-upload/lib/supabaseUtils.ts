@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
+import type { User } from '@supabase/supabase-js' //import the correct type
 
 
 
@@ -23,22 +24,25 @@ export function useCurrentUserId() {
 }
 
 export function useSupabaseUser() {
-  const [user, setUser] = useState<null | { id: string }>(null)
+	// const [user, setUser] = useState<null | { id: string }>(null)
+	const [user, setUser] = useState<User | null>(null) // use full User type
 
-  useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-    })
+	useEffect(() => {
+		// Initial load
+		supabase.auth.getUser().then(({ data }) => {
+			setUser(data.user)
+		})
 
-    // Get initial session
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data?.user ?? null)
-    })
+		// Listen for changes
+		const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+			setUser(session?.user ?? null)
+		})
 
-    return () => {
-      authListener.subscription.unsubscribe()
-    }
-  }, [])
+		// Clean up
+		return () => {
+			authListener.subscription.unsubscribe()
+		}
+	}, [])
 
-  return user
+	return user
 }
