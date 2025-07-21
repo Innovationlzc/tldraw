@@ -17,7 +17,7 @@ import { callLLM, callLLMUnified, callOpenAIVision } from './utils/llmClient'
 import { useGlobalFileUploadToStorage } from './utils/useGlobalFileUploadToStorage'
 import { useCurrentUserId, useSupabaseUser } from './lib/supabaseUtils'
 import { supabase } from './lib/supabaseClient'
-import { FileUploadConfirmDialog } from './FileUploadConfirmDialog'
+import { FileUploadConfirmDialog } from './components/FileUploadConfirmDialog'
 
 
 function AgentNode({ data, id }: { data: any; id: string }) {
@@ -292,9 +292,6 @@ export default function ToolChainEditor() {
 	// }
 	const { uploadFile } = useGlobalFileUploadToStorage(userId)
 
-	// const [pendingFile, setPendingFile] = useState<File | null>(null)
-	// const [dialogOpen, setDialogOpen] = useState(false)
-	
 	// 添加节点
 	function handleAddNode(type: string) {
 		const newNodeId = `${type}-${nodeCounter}`
@@ -438,9 +435,8 @@ export default function ToolChainEditor() {
 				)
 			)
 			// Prompt upload confirmation
-			console.log('🔥 handleUploadFile called with file:', file)
-			// setPendingFile(file)
-			// setDialogOpen(true)
+			console.log('✅ handleUploadFile called with file:', file)
+
 	}
 
 	if (isImage) {
@@ -449,31 +445,6 @@ export default function ToolChainEditor() {
 		reader.readAsText(file)
 	}
 	}
-
-	
-	// async function confirmUploadToStorage() {
-	// 	console.log('🔁 Upload started for:', pendingFile)
-
-	// 	if (!pendingFile || !user || !user.id) return
-	// 	try {
-	// 		console.log('Uploading to Supabase:', pendingFile.name)
-	// 		const result = uploadFile(pendingFile)
-	// 		console.log('✅ Upload result:', result)
-	// 		alert(`Uploaded: ${pendingFile.name}`)
-	// 	} catch (err) {
-	// 		console.error('Upload failed:', err)
-	// 		alert('Upload failed. See console for details.')
-	// 	} finally {
-	// 		setDialogOpen(false)
-	// 		setPendingFile(null)
-	// 	}
-	// }
-
-	// function cancelUploadToStorage() {
-	// 	console.log('Cancelled upload for:', pendingFile)
-	// 	setDialogOpen(false)
-	// 	setPendingFile(null)
-	// }
 
 	function handleUploadRequest(file: any, anchorRef: any) {
 		setUploadPopup({ file, anchorRef })
@@ -563,13 +534,6 @@ export default function ToolChainEditor() {
 				<Background />
 			</ReactFlow>
 			{/* Confirmation Dialog */}
-			{/* {pendingFile && (
-				<FileUploadConfirmDialog
-					file={pendingFile}
-					onConfirm={confirmUploadToStorage}
-					onCancel={cancelUploadToStorage}
-				/>
-			)} */}
 			{uploadPopup !== null ? (
 				<FileUploadConfirmDialog
 					file={uploadPopup.file}
