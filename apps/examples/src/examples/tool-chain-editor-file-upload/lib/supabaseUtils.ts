@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient'
 import type { User } from '@supabase/supabase-js' //import the correct type
 
 
-
+//might be useful for other components
 export function useCurrentUserId() {
   const [userId, setUserId] = useState<string | null>(null)
 

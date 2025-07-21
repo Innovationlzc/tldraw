@@ -8,16 +8,18 @@ import ReactFlow, {
 	Handle,
 	Node,
 	Position,
+	ReactFlowProvider,
 	useEdgesState,
 	useNodesState,
 } from 'react-flow-renderer'
 import 'react-flow-renderer/dist/style.css'
 import InputNodeWithUpload from './InputNodeWithUpload'
 import { callLLM, callLLMUnified, callOpenAIVision } from './utils/llmClient'
-import { useGlobalFileUploadToStorage } from './utils/useGlobalFileUploadToStorage'
+import { useGlobalFileUploadToStorage } from './lib/useGlobalFileUploadToStorage'
 import { useCurrentUserId, useSupabaseUser } from './lib/supabaseUtils'
 import { supabase } from './lib/supabaseClient'
 import { FileUploadConfirmDialog } from './components/FileUploadConfirmDialog'
+import { FileSearch } from './components/FileSearch'
 
 
 function AgentNode({ data, id }: { data: any; id: string }) {
@@ -516,23 +518,50 @@ export default function ToolChainEditor() {
 				position: 'relative',
 			}}
 		>
-			<Toolbar onAddNode={handleAddNode} />
-			<ReactFlow
-				nodes={nodes}
-				edges={edges}
-				onNodesChange={onNodesChange}
-				onEdgesChange={onEdgesChange}
-				onConnect={onConnect}
-				onEdgeClick={onEdgeClick}
-				nodeTypes={nodeTypes}
-				fitView
-				nodesDraggable={true}
-				nodesConnectable={true}
-				elementsSelectable={true}
+			<div
+				style={{
+					position: 'absolute',
+					top: 10,
+					left: 10,
+					right: 10,
+					zIndex: 10,
+					display: 'flex',
+					justifyContent: 'space-between',
+					alignItems: 'flex-start',
+					gap: 16,
+				}}
 			>
-				<Controls />
-				<Background />
-			</ReactFlow>
+				<div style={{ flexGrow: 1 }}>
+					<Toolbar onAddNode={handleAddNode} />
+				</div>
+
+				<FileSearch
+					onSelect={(file) => {
+						console.log('Selected file:', file)
+					}}
+				/>
+			</div>
+
+
+			<ReactFlowProvider>
+				<ReactFlow
+					nodes={nodes}
+					edges={edges}
+					onNodesChange={onNodesChange}
+					onEdgesChange={onEdgesChange}
+					onConnect={onConnect}
+					onEdgeClick={onEdgeClick}
+					nodeTypes={nodeTypes}
+					fitView
+					nodesDraggable={true}
+					nodesConnectable={true}
+					elementsSelectable={true}
+				>
+					<Controls />
+					<Background />
+				</ReactFlow>
+			</ReactFlowProvider>
+			
 			{/* Confirmation Dialog */}
 			{uploadPopup !== null ? (
 				<FileUploadConfirmDialog

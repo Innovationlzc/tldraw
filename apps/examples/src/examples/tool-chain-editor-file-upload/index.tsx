@@ -1,104 +1,26 @@
-import OnlyEditorExample from '../only-editor/OnlyEditorExample'
-import AuthForm from './components/AuthForm'
-import FileUploadToolChainEditor from './FileUploadToolChainEditor'
-import { useSupabaseUser } from './lib/supabaseUtils'
-import SupabaseConnectionTest from './utils/SupabaseConnectionTest'
+import React, { useState } from 'react'
+import ReactDOM, { createRoot } from 'react-dom/client'
 
-// export default function FileUploadToolChainEditorExample() {
-// 	return (
-// 		<div style={{ position: 'relative', width: '100vw', height: '100vh', background: '#f4f4f4' }}>
-// 			{/* 原有 canvas 生态 */}
-// 			<OnlyEditorExample />
-// 			{/* ToolChainEditor 作为主交互 overlay */}
-// 			<div
-// 				style={{
-// 					position: 'absolute',
-// 					top: 40,
-// 					left: 40,
-// 					right: 40,
-// 					zIndex: 10,
-// 					pointerEvents: 'auto',
-// 					boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-// 					borderRadius: 12,
-// 					background: 'rgba(255,255,255,0.95)',
-// 					padding: 24,
-// 					maxWidth: 1200,
-// 					margin: '0 auto',
-// 				}}
-// 			>
-// 				<h2 style={{ marginBottom: 16 }}>Tool Chain Editor (Demo)</h2>
-// 				<FileUploadToolChainEditor />
-// 				{/* <SupabaseConnectionTest /> */}
-// 			</div>
-// 		</div>
-// 	)
-// }
+import { SessionContextProvider } from '@supabase/auth-helpers-react'
+import { supabase } from './lib/supabaseClient'
 
-export default function FileUploadToolChainEditorExample() {
-	const user = useSupabaseUser()
+import FileUploadToolChainEditorExample from './components/FileUploadToolChainEditorExample'
 
-	if (!user) {
-		// Not logged in → show AuthForm centered
-		return (
-			<div
-				style={{
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-					width: '100vw',
-					height: '100vh',
-					background: '#f0f0f0',
-				}}
-			>
-				<AuthForm />
-			</div>
-		)
-	}
+const Root = () => {
+	const [supabaseClient] = useState(() => supabase)
 
-	// Logged in → show ToolChainEditor + canvas overlay
 	return (
-		<div style={{ position: 'relative', width: '100vw', height: '100vh', background: '#f4f4f4' }}>
-			<OnlyEditorExample />
-			<div
-				style={{
-					position: 'absolute',
-					top: 40,
-					left: 40,
-					right: 40,
-					zIndex: 10,
-					pointerEvents: 'auto',
-					boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-					borderRadius: 12,
-					background: 'rgba(255,255,255,0.95)',
-					padding: 24,
-					maxWidth: 1200,
-					margin: '0 auto',
-				}}
-			>
-				<h2 style={{ marginBottom: 16 }}>
-					Tool Chain Editor (Demo){' '}
-					<span style={{ fontSize: 14, marginLeft: 16 }}>
-						Logged in as <strong>{user.email}</strong>{' '}
-						<button
-							style={{
-								marginLeft: 12,
-								fontSize: 12,
-								border: 'none',
-								background: '#eee',
-								padding: '4px 8px',
-								borderRadius: 4,
-								cursor: 'pointer',
-							}}
-							onClick={() => {
-								import('./lib/supabaseClient').then(({ supabase }) => supabase.auth.signOut())
-							}}
-						>
-							Log out
-						</button>
-					</span>
-				</h2>
-				<FileUploadToolChainEditor />
-			</div>
-		</div>
+		<SessionContextProvider supabaseClient={supabaseClient}>
+			<FileUploadToolChainEditorExample />
+		</SessionContextProvider>
 	)
 }
+
+const container = document.getElementById('root')
+const root = createRoot(container!)
+
+root.render(
+	<React.StrictMode>
+		<Root />
+	</React.StrictMode>
+)

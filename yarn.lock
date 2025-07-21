@@ -8258,6 +8258,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@supabase/auth-helpers-react@npm:^0.5.0":
+  version: 0.5.0
+  resolution: "@supabase/auth-helpers-react@npm:0.5.0"
+  peerDependencies:
+    "@supabase/supabase-js": ^2.39.8
+  checksum: 10/465ae1d5de923a49447becbf1bdde2f2f22ef0498d829a2b5e74e039273107a3b167f8f52ee17222718f5ba1804879d2e9f946d9b49b0eb9b8f73c77ed7f4726
+  languageName: node
+  linkType: hard
+
 "@supabase/auth-helpers-remix@npm:^0.2.6":
   version: 0.2.6
   resolution: "@supabase/auth-helpers-remix@npm:0.2.6"
@@ -9184,6 +9193,7 @@ __metadata:
     "@microsoft/api-extractor": "npm:^7.49.1"
     "@next/eslint-plugin-next": "npm:^15.1.6"
     "@sentry/cli": "npm:^2.41.1"
+    "@supabase/auth-helpers-react": "npm:^0.5.0"
     "@swc/core": "npm:^1.10.11"
     "@swc/jest": "npm:^0.2.37"
     "@types/aws-lambda": "npm:8.10.148"
