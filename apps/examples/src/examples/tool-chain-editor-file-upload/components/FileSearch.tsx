@@ -11,6 +11,10 @@ export function FileSearch({ onSelect }: { onSelect: (file: any) => void }) {
 	const session = useSession()
 	const userId = session?.user?.id ?? null
 
+	const SUPABASE_URL = 'https://dmhftlaiiulqvuzlzdvo.supabase.co' // project id from Supabase
+	const getPublicFileURL = (path: string) =>
+	`${SUPABASE_URL}/storage/v1/object/public/user-files/${path}`
+
 	useEffect(() => {
 		const delayDebounce = setTimeout(async () => {
 			if (query.trim()) {
@@ -43,13 +47,17 @@ export function FileSearch({ onSelect }: { onSelect: (file: any) => void }) {
 			<input
 				ref={inputRef}
 				value={query}
-				onChange={(e) => setQuery(e.target.value)}
+				onChange={(e) => {
+						setQuery(e.target.value)
+						setSelected(null) // clears on every change
+					}}
 				onKeyDown={(e) => {
 					if (e.key === 'Enter' && results.length > 0) {
 						onSelect(results[0])
 						setSelected(results[0])
 					}
 				}}
+				onFocus={() => setSelected(null)} // clears selection
 				placeholder="Search files..."
 				style={{
 					width: '100%',
@@ -90,21 +98,68 @@ export function FileSearch({ onSelect }: { onSelect: (file: any) => void }) {
 			{selected && (
 				<div
 					style={{
-						marginTop: 12,
-						padding: 10,
-						background: '#f9f9f9',
-						borderTop: '1px solid #ccc',
-						borderRadius: 6,
+						marginTop: 8,
+						padding: '12px 14px',
+						border: '1px solid #ddd',
+						borderRadius: 8,
+						background: '#fff',
+						boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+						fontFamily: 'Inter, sans-serif',
+						fontSize: 14,
+						lineHeight: 1.5,
 					}}
 				>
-					<strong>{selected.file_name}</strong>
-					<p>{selected.mime_type}</p>
-					<p>{Math.round(selected.size / 1024)} KB</p>
+					<div style={{ fontWeight: 600, fontSize: 15 }}>{selected.file_name}</div>
+					<div style={{ color: '#555', marginBottom: 8 }}>
+						{selected.mime_type} • {Math.round(selected.size / 1024)} KB
+					</div>
+
+					{/* Image Preview */}
+					{selected.mime_type.startsWith('image/') && (
+						<img
+							src={getPublicFileURL(selected.storage_url)}
+							alt={selected.file_name}
+							style={{
+								width: '100%',
+								maxHeight: 160,
+								objectFit: 'cover',
+								borderRadius: 6,
+								border: '1px solid #eee',
+							}}
+						/>
+					)}
+
+					{/* Text file icon */}
+					{selected.mime_type === 'text/plain' && (
+						<div
+							style={{
+								display: 'flex',
+								alignItems: 'center',
+								gap: 8,
+								color: '#333',
+							}}
+						>
+							📄 Plain text file
+						</div>
+					)}
+
+					{/* PDF icon */}
+					{selected.mime_type === 'application/pdf' && (
+						<div
+							style={{
+								display: 'flex',
+								alignItems: 'center',
+								gap: 8,
+								color: '#333',
+							}}
+						>
+							📕 PDF file
+						</div>
+					)}
 				</div>
 			)}
-			{query.trim() && results.length === 0 && (
-				<div style={{ padding: '4px 8px', color: '#888' }}>No files found.</div>
-			)}
+
+
 		</div>
 	)
 }
