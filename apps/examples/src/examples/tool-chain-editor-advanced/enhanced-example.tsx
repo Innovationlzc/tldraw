@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import ChatbotToolchainParser from './chatbot-toolchain-parser'
 import EnhancedToolChainEditor from './enhanced-tool-chain-editor'
 import { EnhancedToolRegistry, defaultToolSets } from './enhanced-tool-registry'
+import AuthForm from './file-upload/components/AuthForm'
+import { useSupabaseUser } from './file-upload/lib/supabaseUtils'
+import { FileSearch } from './file-upload/components/FileSearch'
 
 // ==================== Enhanced Example Component ====================
 
@@ -16,6 +19,7 @@ export default function EnhancedToolChainEditorExample() {
 	const [showChatbot, setShowChatbot] = useState(false)
 	const [generatedNodes, setGeneratedNodes] = useState<any[]>([])
 	const [generatedEdges, setGeneratedEdges] = useState<any[]>([])
+	const [selectedFile, setSelectedFile] = useState<any | null>(null)
 
 	// Initialize tool registry
 	const [toolRegistry] = useState(() => new EnhancedToolRegistry(toolSets))
@@ -25,10 +29,30 @@ export default function EnhancedToolChainEditorExample() {
 		setStatistics(toolRegistry.getStatistics())
 	}, [toolRegistry])
 
+	
+	const user = useSupabaseUser()
+	if (!user) {
+		// Not logged in → show AuthForm centered
+		return (
+			<div
+				style={{
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					width: '100vw',
+					height: '100vh',
+					background: '#f0f0f0',
+				}}
+			>
+				<AuthForm />
+			</div>
+		)
+	}
+	
 	// Handle workflow change
 	const handleWorkflowChange = (newWorkflow: any) => {
 		setWorkflow(newWorkflow)
-		console.log('Workflow updated:', newWorkflow)
+		// console.log('Workflow updated:', newWorkflow)
 	}
 
 	// Handle tool set load
@@ -146,6 +170,25 @@ export default function EnhancedToolChainEditorExample() {
 				<div style={{ marginBottom: 12 }}>
 					<h3 style={{ margin: '0 0 8px 0', fontSize: 16, fontWeight: 'bold' }}>
 						🚀 Enhanced Tool Chain Editor
+						<span style={{ fontSize: 14, marginLeft: 16 }}>
+						Logged in as <strong>{user.email}</strong>{' '}
+						<button
+							style={{
+								marginLeft: 12,
+								fontSize: 12,
+								border: 'none',
+								background: '#eee',
+								padding: '4px 8px',
+								borderRadius: 4,
+								cursor: 'pointer',
+							}}
+							onClick={() => {
+								import('./file-upload/lib/supabaseClient').then(({ supabase }) => supabase.auth.signOut())
+							}}
+						>
+							Log out
+						</button>
+					</span>
 					</h3>
 					{statistics && (
 						<div style={{ fontSize: 11, color: '#666' }}>
@@ -204,7 +247,14 @@ export default function EnhancedToolChainEditorExample() {
 						>
 							🔗 Workflow
 						</button>
+						
 					)}
+					<FileSearch
+						onSelect={(file) => {
+							console.log('📁 File selected from FileSearch:', file)
+							setSelectedFile(file)
+						}}
+					/>
 
 					<div style={{ display: 'flex', gap: 4 }}>
 						<button
@@ -275,6 +325,7 @@ export default function EnhancedToolChainEditorExample() {
 							🔄
 						</button>
 					</div>
+
 				</div>
 			</div>
 

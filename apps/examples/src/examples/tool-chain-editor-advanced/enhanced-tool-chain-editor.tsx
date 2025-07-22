@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import ReactFlow, {
 	addEdge,
 	Background,
@@ -16,12 +16,136 @@ import 'react-flow-renderer/dist/style.css'
 import { ToolDefinition } from '../tool-chain-editor/ToolChainEditor'
 import { defaultToolSets, EnhancedToolRegistry } from './enhanced-tool-registry'
 import EnhancedToolbar from './enhanced-toolbar'
+import { useSupabaseUser } from './file-upload/lib/supabaseUtils'
+import { useGlobalFileUploadToStorage } from './file-upload/lib/useGlobalFileUploadToStorage'
+import { FileUploadConfirmDialog } from './file-upload/components/FileUploadConfirmDialog'
 
 // ==================== Enhanced Node Components ====================
 
 interface EnhancedNodeProps {
 	data: any
 	id: string
+}
+
+function EnhancedInputNodeWithFileUpload({ data, id }: EnhancedNodeProps) {
+	const [isDragging, setIsDragging] = useState(false)
+	const nodeRef = useRef<HTMLDivElement>(null)
+
+	useEffect(() => {
+		if (data.file && data.onUploadRequested) {
+			data.onUploadRequested(data.file, nodeRef)
+		}
+	}, [data.file])
+
+	const handleDrop = useCallback(
+		(e: React.DragEvent<HTMLDivElement>) => {
+			e.preventDefault()
+			setIsDragging(false)
+			const file = e.dataTransfer.files?.[0]
+			if (file) {
+				data.onUploadFile(file)
+			}
+		},
+		[data]
+	)
+
+	return (
+		<div
+			ref={nodeRef}
+			onDragOver={(e) => {
+				e.preventDefault()
+				setIsDragging(true)
+			}}
+			onDragLeave={() => setIsDragging(false)}
+			onDrop={handleDrop}
+			style={{
+				padding: 12,
+				background: '#fff',
+				border: isDragging ? '2px dashed #007bff' : '2px solid #007bff',
+				borderRadius: 10,
+				minWidth: 200,
+				maxWidth: 320,
+			}}
+		>
+			{/* Header */}
+			<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+				<strong style={{ fontSize: 16 }}>📥 Input</strong>
+				<button
+					onClick={() => data.onDeleteNode(id)}
+					style={{
+						background: '#ff4444',
+						color: 'white',
+						border: 'none',
+						borderRadius: '50%',
+						width: 20,
+						height: 20,
+						cursor: 'pointer',
+						fontSize: 10,
+					}}
+				>
+					×
+				</button>
+			</div>
+
+			{/* Input field + upload */}
+			<div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+				<input
+					style={{
+						flex: 1,
+						fontSize: 14,
+						padding: 6,
+						borderRadius: 4,
+						border: '1px solid #ccc',
+					}}
+					value={data.value}
+					onChange={(e) => data.onChange(e.target.value)}
+					onKeyDown={(e) => {
+						if (e.key === 'Enter') {
+							data.onSubmit()
+						}
+					}}
+					placeholder="Enter input data..."
+				/>
+				<label style={{ cursor: 'pointer' }}>
+					📎
+					<input
+						type="file"
+						style={{ display: 'none' }}
+						onChange={(e) => {
+							const file = e.target.files?.[0]
+							if (file) {
+								data.onUploadFile(file)
+							}
+						}}
+					/>
+				</label>
+			</div>
+
+			{/* File name preview */}
+			{data.file && (
+				<div style={{ fontSize: 12, marginTop: 6, color: '#555' }}>
+					📄 {data.file.name}
+				</div>
+			)}
+
+			{/* Image preview */}
+			{data.imagePreview && (
+				<img
+					src={data.imagePreview}
+					alt="preview"
+					style={{
+						marginTop: 6,
+						width: '100%',
+						maxHeight: 120,
+						objectFit: 'contain',
+						borderRadius: 6,
+					}}
+				/>
+			)}
+
+			<Handle type="source" position={Position.Right} />
+		</div>
+	)
 }
 
 function EnhancedInputNode({ data, id }: EnhancedNodeProps) {
@@ -254,7 +378,7 @@ function EnhancedOutputNode({ data, id }: EnhancedNodeProps) {
 // ==================== Node Type Definitions ====================
 
 const enhancedNodeTypes = {
-	inputNode: EnhancedInputNode,
+	inputNode: EnhancedInputNodeWithFileUpload, // Use the file upload version instead of EnhancedInputNode
 	agentNode: EnhancedAgentNode,
 	processNode: EnhancedProcessNode,
 	outputNode: EnhancedOutputNode,
@@ -314,6 +438,15 @@ export default function EnhancedToolChainEditor({
 
 	const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
 	const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+	const [uploadPopup, setUploadPopup] = useState<{file: File
+	anchorRef: React.RefObject<HTMLElement>
+	} | null>(null)
+	
+	// Supabase user and upload logic
+	const user = useSupabaseUser()
+	const userId = user?.id || '' 
+	// Upload File to Supabase table and storage
+	const { uploadFile } = useGlobalFileUploadToStorage(userId)
 
 	// Add node
 	function handleAddNode(type: string, toolId?: string) {
@@ -331,6 +464,7 @@ export default function EnhancedToolChainEditor({
 				onChange: (val: string) => handleInputChange(newNodeId, val),
 				onSubmit: () => handleSubmit(newNodeId),
 				onDeleteNode: handleDeleteNode,
+				onUploadFile: (file: File) => handleUploadFile(newNodeId, file),
 			},
 			position: { x: Math.random() * 400 + 200, y: Math.random() * 300 + 100 },
 		}
@@ -583,6 +717,64 @@ export default function EnhancedToolChainEditor({
 		}
 	}, [generatedNodes, generatedEdges, hasAppliedGenerated])
 
+	function handleUploadFile(nodeId: string, file: File) {
+		const reader = new FileReader()
+		const isImage = file.type.startsWith('image/')
+
+		reader.onload = () => {
+			const content = reader.result
+
+			setNodes((nds) =>
+				nds.map((node) =>
+					node.id === nodeId
+						? {
+								...node,
+								data: {
+									...node.data,
+									file,
+									imagePreview: isImage ? content : null,
+									value: isImage
+										? `[Image uploaded: ${file.name}]`
+										: typeof content === 'string'
+											? content
+											: '',
+								},
+						}
+						: node
+				)
+			)
+			// Prompt upload confirmation
+			console.log('✅ handleUploadFile called with file:', file)
+
+		}
+
+		if (isImage) {
+			reader.readAsDataURL(file) // creates base64 image for preview
+		} else {
+			reader.readAsText(file)
+		}
+	}
+
+	function handleUploadRequest(file: any, anchorRef: any) {
+		setUploadPopup({ file, anchorRef })
+	}
+
+	function confirmUploadToStorage() {
+		if (!uploadPopup?.file) return
+
+		console.log('🟡 Uploading:', uploadPopup.file.name)
+		uploadFile(uploadPopup.file)
+		setUploadPopup(null)
+		console.log('✅ Cleared uploadPopup after upload')
+	}
+
+	function cancelUploadToStorage() {
+		console.log('❌ Upload cancelled')
+		setUploadPopup(null)
+		setNodes((nodes) => [...nodes])
+
+	}
+	
 	// Update node event handlers
 	useEffect(() => {
 		setNodes((nds) =>
@@ -595,6 +787,8 @@ export default function EnhancedToolChainEditor({
 							onChange: (val: string) => handleInputChange(node.id, val),
 							onSubmit: () => handleSubmit(node.id),
 							onDeleteNode: handleDeleteNode,
+							onUploadFile: (file: File) => handleUploadFile(node.id, file),
+							onUploadRequested: handleUploadRequest,
 						},
 					}
 				}
@@ -640,6 +834,16 @@ export default function EnhancedToolChainEditor({
 				<Controls />
 				<Background />
 			</ReactFlow>
+			{/* Confirmation Dialog */}
+			{uploadPopup !== null ? (
+				<FileUploadConfirmDialog
+					file={uploadPopup.file}
+					anchorRef={uploadPopup.anchorRef}
+					onConfirm={confirmUploadToStorage}
+					onCancel={cancelUploadToStorage}
+				/>
+			) : null}
+						
 		</div>
 	)
 }
