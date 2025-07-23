@@ -3,7 +3,9 @@ import EnhancedToolChainEditor from './enhanced-tool-chain-editor'
 import { EnhancedToolRegistry, defaultToolSets } from './enhanced-tool-registry'
 // @ts-ignore
 import mammoth from 'mammoth'
+// @ts-ignore
 import * as pdfjsLib from 'pdfjs-dist/build/pdf'
+// @ts-ignore
 import Tesseract from 'tesseract.js'
 
 // ==================== New ChatbotPanel and StepsPanel Placeholders ====================
