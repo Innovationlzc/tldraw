@@ -301,11 +301,23 @@ const EnhancedToolChainEditor = forwardRef(function EnhancedToolChainEditor(
 	const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
 
 	// Add initialValue param for step drag-and-drop
-	function handleAddNode(type: string, toolId?: string, initialValue?: string, idx?: number) {
+	function handleAddNode(
+		type: string,
+		toolId?: string,
+		initialValue?: string,
+		idx?: number,
+		isToolNode?: boolean
+	) {
 		const newNodeId = `${type}-${Date.now()}-${Math.floor(Math.random() * 100000)}`
 		const tool = toolId ? toolRegistry.getTool(toolId) : null
-		const label = type === 'inputNode' && typeof idx === 'number' ? `Input ${idx + 1}` : undefined
+		const label =
+			type === 'inputNode' && typeof idx === 'number'
+				? `Input ${idx + 1}`
+				: tool
+					? tool.name
+					: undefined
 		const y = typeof idx === 'number' ? 100 + idx * 120 : Math.random() * 300 + 100
+		const x = isToolNode ? 500 : 200
 
 		const newNode: Node = {
 			id: newNodeId,
@@ -320,17 +332,36 @@ const EnhancedToolChainEditor = forwardRef(function EnhancedToolChainEditor(
 				onSubmit: () => handleSubmit(newNodeId),
 				onDeleteNode: handleDeleteNode,
 			},
-			position: { x: 200, y },
+			position: { x, y },
 		}
 
 		setNodes((nds) => [...nds, newNode])
 		setNodeCounter((counter) => counter + 1)
+		return newNodeId
 	}
 
 	// Expose addInputNodeForStep and clearAllNodes to parent via ref
 	useImperativeHandle(ref, () => ({
-		addInputNodeForStep: (step: string, idx?: number) =>
-			handleAddNode('inputNode', undefined, step, idx),
+		addInputNodeForStep: (step: string, idx?: number) => {
+			const id = handleAddNode('inputNode', undefined, step, idx)
+			return id
+		},
+		addToolNodeForStep: (tool: any, idx?: number, step?: string) => {
+			const id = handleAddNode(tool.type + 'Node', tool.id, step, idx, true)
+			return id
+		},
+		addEdgeBetweenNodes: (sourceId: string, targetId: string) => {
+			setEdges((eds) => [
+				...eds,
+				{
+					id: `e-${sourceId}-${targetId}`,
+					source: sourceId,
+					target: targetId,
+					type: 'default',
+					animated: true,
+				},
+			])
+		},
 		clearAllNodes: () => {
 			setNodes([])
 			setEdges([])

@@ -209,6 +209,53 @@ function StepsPanel({
 
 // ==================== Enhanced Example Component ====================
 
+// Helper: Find best matching tool for a step (refined semantic matching)
+function findBestMatchingTool(step: string, toolRegistry: any) {
+	const tools = toolRegistry.getAllTools ? toolRegistry.getAllTools() : []
+	const stepLower = step.toLowerCase()
+
+	// Text Analysis
+	if (/analy[sz]e|analysis|statistics|count|summarize|extract/i.test(stepLower)) {
+		if (/sentiment|emotion|opinion|positive|negative/i.test(stepLower)) {
+			return tools.find((t: any) => t.name.toLowerCase().includes('sentiment'))
+		}
+		return tools.find((t: any) => t.name.toLowerCase().includes('analyzer'))
+	}
+
+	// Translation
+	if (/translat|language|convert.*language/i.test(stepLower)) {
+		return tools.find((t: any) => t.name.toLowerCase().includes('translator'))
+	}
+
+	// JSON
+	if (/json|format|validate.*json/i.test(stepLower)) {
+		return tools.find((t: any) => t.name.toLowerCase().includes('json'))
+	}
+
+	// Data Transformation
+	if (/transform|convert|change.*format/i.test(stepLower)) {
+		return tools.find((t: any) => t.name.toLowerCase().includes('transformer'))
+	}
+
+	// File Processing
+	if (/file|document|process.*file/i.test(stepLower)) {
+		return tools.find((t: any) => t.name.toLowerCase().includes('file processor'))
+	}
+
+	// Image Compression
+	if (/image|photo|picture|compress|resize/i.test(stepLower)) {
+		return tools.find((t: any) => t.name.toLowerCase().includes('image compressor'))
+	}
+
+	// AI/General Agent
+	if (/ai|agent|generate|chat|answer|respond|deepseek/i.test(stepLower)) {
+		return tools.find((t: any) => t.name.toLowerCase().includes('deepseek'))
+	}
+
+	// Fallback: DeepSeek AI Agent
+	return tools.find((t: any) => t.name.toLowerCase().includes('deepseek'))
+}
+
 export default function EnhancedToolChainEditorExample() {
 	const [toolSets, setToolSets] = useState(defaultToolSets)
 	const [workflow, setWorkflow] = useState<any>(null)
@@ -344,16 +391,26 @@ export default function EnhancedToolChainEditorExample() {
 		}
 	}
 
-	// When steps change, clear and add input nodes for all steps
+	// When steps change, clear and add input/tool nodes for all steps
 	React.useEffect(() => {
 		if (
 			steps.length > 0 &&
 			toolChainEditorRef.current &&
-			toolChainEditorRef.current.addInputNodeForStep
+			toolChainEditorRef.current.addInputNodeForStep &&
+			toolChainEditorRef.current.addToolNodeForStep &&
+			toolChainEditorRef.current.addEdgeBetweenNodes
 		) {
 			clearWorkflow()
 			steps.forEach((step: string, idx: number) => {
-				toolChainEditorRef.current.addInputNodeForStep(step, idx)
+				const inputNodeId = toolChainEditorRef.current.addInputNodeForStep(step, idx)
+				const bestTool = findBestMatchingTool(step, toolRegistry)
+				if (bestTool) {
+					const toolNodeId = toolChainEditorRef.current.addToolNodeForStep(bestTool, idx, step)
+					// Connect input node to tool node
+					if (inputNodeId && toolNodeId) {
+						toolChainEditorRef.current.addEdgeBetweenNodes(inputNodeId, toolNodeId)
+					}
+				}
 			})
 		}
 	}, [steps])
