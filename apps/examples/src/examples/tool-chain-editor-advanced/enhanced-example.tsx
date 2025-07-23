@@ -1,20 +1,115 @@
 import React, { useEffect, useState } from 'react'
 import EnhancedToolChainEditor from './enhanced-tool-chain-editor'
 import { EnhancedToolRegistry, defaultToolSets } from './enhanced-tool-registry'
+// @ts-ignore
+import mammoth from 'mammoth'
+import * as pdfjsLib from 'pdfjs-dist/build/pdf'
+import Tesseract from 'tesseract.js'
 
 // ==================== New ChatbotPanel and StepsPanel Placeholders ====================
 function ChatbotPanel({
 	chatHistory,
 	onSendPrompt,
 	isLoading,
+	setChatHistory,
 }: {
-	chatHistory: { role: 'user' | 'ai'; content: string; isLoading?: boolean }[]
+	chatHistory: {
+		role: 'user' | 'ai'
+		content: string
+		isLoading?: boolean
+		fileName?: string
+		filePreview?: string
+		fileType?: string
+	}[]
 	onSendPrompt: (prompt: string) => void
 	isLoading: boolean
+	setChatHistory: React.Dispatch<React.SetStateAction<any[]>>
 }) {
 	const [inputValue, setInputValue] = useState('')
 	const chatEndRef = React.useRef<HTMLDivElement>(null)
 	const [ellipsis, setEllipsis] = React.useState('')
+
+	// File upload state
+	const [selectedFile, setSelectedFile] = useState<File | null>(null)
+	const [filePreview, setFilePreview] = useState<string | null>(null)
+	const [fileType, setFileType] = useState<string | null>(null)
+
+	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0]
+		if (!file) return
+		setSelectedFile(file)
+		setFileType(file.type)
+
+		if (file.type.startsWith('image/')) {
+			setFilePreview(URL.createObjectURL(file))
+		} else if (file.type === 'text/plain') {
+			const reader = new FileReader()
+			reader.onload = () => setFilePreview(reader.result as string)
+			reader.readAsText(file)
+		} else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+			setFilePreview(file.name)
+		} else if (
+			file.type === 'application/msword' ||
+			file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+			file.name.endsWith('.doc') ||
+			file.name.endsWith('.docx')
+		) {
+			setFilePreview(file.name)
+		}
+	}
+
+	const handleSendFile = async () => {
+		if (!selectedFile) return
+		let extractedText = ''
+
+		if (selectedFile.type === 'text/plain') {
+			extractedText = filePreview || ''
+		} else if (selectedFile.type === 'application/pdf' || selectedFile.name.endsWith('.pdf')) {
+			// PDF extraction
+			const arrayBuffer = await selectedFile.arrayBuffer()
+			const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+			for (let i = 1; i <= pdf.numPages; i++) {
+				const page = await pdf.getPage(i)
+				const textContent = await page.getTextContent()
+				extractedText += textContent.items.map((item: any) => item.str).join(' ') + '\n'
+			}
+		} else if (
+			selectedFile.type === 'application/msword' ||
+			selectedFile.type ===
+				'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+			selectedFile.name.endsWith('.doc') ||
+			selectedFile.name.endsWith('.docx')
+		) {
+			// Word extraction
+			const arrayBuffer = await selectedFile.arrayBuffer()
+			const result = await mammoth.extractRawText({ arrayBuffer })
+			extractedText = result.value
+		} else if (selectedFile.type.startsWith('image/')) {
+			// OCR for images
+			const {
+				data: { text },
+			} = await Tesseract.recognize(selectedFile, 'eng')
+			extractedText = text
+		}
+
+		if (extractedText.trim()) {
+			onSendPrompt(extractedText.trim())
+		}
+
+		setSelectedFile(null)
+		setFilePreview(null)
+		setFileType(null)
+	}
+
+	const handleSend = (e: React.FormEvent) => {
+		e.preventDefault()
+		if (selectedFile) {
+			handleSendFile()
+		} else if (inputValue.trim()) {
+			onSendPrompt(inputValue)
+			setInputValue('')
+		}
+	}
 
 	// Animate ellipsis when loading
 	React.useEffect(() => {
@@ -98,6 +193,49 @@ function ChatbotPanel({
 							}}
 						>
 							{msg.isLoading ? `……${ellipsis}` : msg.content}
+							{/* File preview for user-uploaded files */}
+							{msg.fileName && (
+								<div style={{ marginTop: 8 }}>
+									<strong>{msg.fileName}</strong>
+									{msg.fileType && msg.fileType.startsWith('image/') && msg.filePreview && (
+										<div>
+											<img
+												src={msg.filePreview}
+												alt={msg.fileName}
+												style={{ maxWidth: 180, maxHeight: 120, borderRadius: 8, marginTop: 4 }}
+											/>
+										</div>
+									)}
+									{msg.fileType === 'text/plain' && msg.filePreview && (
+										<pre
+											style={{
+												maxHeight: 80,
+												overflow: 'auto',
+												background: '#f7f7fb',
+												borderRadius: 4,
+												padding: 6,
+												marginTop: 4,
+											}}
+										>
+											{msg.filePreview.slice(0, 300)}
+										</pre>
+									)}
+									{msg.fileType === 'application/pdf' && (
+										<div style={{ fontStyle: 'italic', color: '#888', marginTop: 4 }}>
+											[PDF file]
+										</div>
+									)}
+									{(msg.fileType === 'application/msword' ||
+										msg.fileType ===
+											'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+										(msg.fileName &&
+											(msg.fileName.endsWith('.doc') || msg.fileName.endsWith('.docx')))) && (
+										<div style={{ fontStyle: 'italic', color: '#888', marginTop: 4 }}>
+											[Word document]
+										</div>
+									)}
+								</div>
+							)}
 						</div>
 					</div>
 				))}
@@ -113,16 +251,21 @@ function ChatbotPanel({
 					boxShadow: '0 -2px 8px #f0f0f0',
 				}}
 			>
-				<form
-					onSubmit={(e) => {
-						e.preventDefault()
-						if (inputValue.trim()) {
-							onSendPrompt(inputValue)
-							setInputValue('')
-						}
-					}}
-					style={{ display: 'flex', alignItems: 'center', gap: 10 }}
-				>
+				<form onSubmit={handleSend} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+					<label
+						htmlFor="file-upload"
+						style={{ cursor: 'pointer', marginRight: 8, fontSize: 20 }}
+						title="Upload file"
+					>
+						📎
+					</label>
+					<input
+						type="file"
+						accept=".doc,.docx,.pdf,.txt,.jpg,.jpeg,.png"
+						id="file-upload"
+						style={{ display: 'none' }}
+						onChange={handleFileChange}
+					/>
 					<input
 						type="text"
 						name="prompt"
@@ -169,6 +312,47 @@ function ChatbotPanel({
 						Send
 					</button>
 				</form>
+				{/* File preview before sending */}
+				{selectedFile && (
+					<div style={{ marginTop: 8, background: '#f7f7fb', borderRadius: 8, padding: 10 }}>
+						<strong>{selectedFile.name}</strong>
+						{fileType && fileType.startsWith('image/') && filePreview && (
+							<div>
+								<img
+									src={filePreview}
+									alt={selectedFile.name}
+									style={{ maxWidth: 180, maxHeight: 120, borderRadius: 8, marginTop: 4 }}
+								/>
+							</div>
+						)}
+						{fileType === 'text/plain' && filePreview && (
+							<pre
+								style={{
+									maxHeight: 80,
+									overflow: 'auto',
+									background: '#fff',
+									borderRadius: 4,
+									padding: 6,
+									marginTop: 4,
+								}}
+							>
+								{filePreview.slice(0, 300)}
+							</pre>
+						)}
+						{fileType === 'application/pdf' && (
+							<div style={{ fontStyle: 'italic', color: '#888', marginTop: 4 }}>[PDF file]</div>
+						)}
+						{(fileType === 'application/msword' ||
+							fileType ===
+								'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+							(selectedFile &&
+								(selectedFile.name.endsWith('.doc') || selectedFile.name.endsWith('.docx')))) && (
+							<div style={{ fontStyle: 'italic', color: '#888', marginTop: 4 }}>
+								[Word document]
+							</div>
+						)}
+					</div>
+				)}
 			</div>
 		</div>
 	)
@@ -525,6 +709,7 @@ export default function EnhancedToolChainEditorExample() {
 					chatHistory={chatHistory}
 					onSendPrompt={handleSendPrompt}
 					isLoading={isLoading}
+					setChatHistory={setChatHistory}
 				/>
 			</div>
 			{/* Right: Only Tool Chain Editor, no StepsPanel */}

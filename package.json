@@ -140,10 +140,13 @@
 		"@yarnpkg/types": "^4.0.0",
 		"cross-env": "^7.0.3",
 		"esbuild": "^0.25.0",
+		"mammoth": "^1.9.1",
 		"mime": "^4.0.6",
+		"pdfjs-dist": "^5.3.93",
 		"purgecss": "^5.0.0",
 		"react-flow-renderer": "^10.3.17",
 		"sst": "^3.10.13",
-		"svgo": "^3.3.2"
+		"svgo": "^3.3.2",
+		"tesseract.js": "^6.0.1"
 	}
 }
