@@ -5,7 +5,7 @@ import { EnhancedToolRegistry, ToolSet } from './enhanced-tool-registry'
 // ==================== Enhanced Toolbar Component ====================
 
 interface EnhancedToolbarProps {
-	onAddNode: (type: string, toolId?: string) => void
+	onAddNode: (type: string, toolId?: string, initialValue?: string) => void
 	toolRegistry: EnhancedToolRegistry
 	onToolSetLoad?: (toolSetId: string) => void
 	onSearch?: (query: string) => void
@@ -193,7 +193,7 @@ export default function EnhancedToolbar({
 
 interface ToolSetSectionProps {
 	toolSet: ToolSet
-	onAddNode: (type: string, toolId?: string) => void
+	onAddNode: (type: string, toolId?: string, initialValue?: string) => void
 	onLoadToolSet: (toolSetId: string) => void
 	isLoading: boolean
 	onShowDetails: (toolId: string) => void
@@ -288,12 +288,14 @@ function ToolSetSection({
 
 interface ToolItemProps {
 	tool: ToolDefinition
-	onAddNode: (type: string, toolId?: string) => void
+	onAddNode: (type: string, toolId?: string, initialValue?: string) => void
 	onShowDetails: (toolId: string) => void
 	showDetails: boolean
 }
 
 function ToolItem({ tool, onAddNode, onShowDetails, showDetails }: ToolItemProps) {
+	const [isDragOver, setIsDragOver] = useState(false)
+
 	const getToolTypeColor = (type: string): string => {
 		switch (type) {
 			case 'input':
@@ -324,17 +326,35 @@ function ToolItem({ tool, onAddNode, onShowDetails, showDetails }: ToolItemProps
 		}
 	}
 
+	// Handle drop from step
+	const handleDrop = (e: React.DragEvent) => {
+		e.preventDefault()
+		setIsDragOver(false)
+		const step = e.dataTransfer.getData('text/plain')
+		if (step) {
+			onAddNode(`${tool.type}Node`, tool.id, step)
+		}
+	}
+
 	return (
 		<div style={{ marginBottom: 6 }}>
 			<div
+				onDragOver={(e) => {
+					e.preventDefault()
+					setIsDragOver(true)
+				}}
+				onDragLeave={(e) => setIsDragOver(false)}
+				onDrop={handleDrop}
 				style={{
 					display: 'flex',
 					alignItems: 'center',
 					justifyContent: 'space-between',
 					padding: '6px 10px',
-					background: '#f8f9fa',
+					background: isDragOver ? '#e3f2fd' : '#f8f9fa',
 					borderRadius: 4,
-					border: '1px solid #e9ecef',
+					border: isDragOver ? '2px solid #007bff' : '1px solid #e9ecef',
+					boxShadow: isDragOver ? '0 0 0 2px #90caf9' : undefined,
+					transition: 'background 0.15s, border 0.15s, box-shadow 0.15s',
 				}}
 			>
 				<div style={{ flex: 1 }}>

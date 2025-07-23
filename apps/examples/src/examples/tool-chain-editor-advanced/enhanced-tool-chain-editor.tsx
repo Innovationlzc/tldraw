@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react'
 import ReactFlow, {
 	addEdge,
 	Background,
@@ -37,7 +37,7 @@ function EnhancedInputNode({ data, id }: EnhancedNodeProps) {
 			}}
 		>
 			<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-				<strong style={{ fontSize: 16 }}>📥 Input</strong>
+				<strong style={{ fontSize: 16 }}>{data.label || '📥 Input'}</strong>
 				<button
 					onClick={() => data.onDeleteNode(id)}
 					style={{
@@ -270,13 +270,16 @@ interface EnhancedToolChainEditorProps {
 	generatedEdges?: Edge[]
 }
 
-export default function EnhancedToolChainEditor({
-	toolSets = defaultToolSets,
-	onWorkflowChange,
-	onToolSetLoad,
-	generatedNodes,
-	generatedEdges,
-}: EnhancedToolChainEditorProps) {
+const EnhancedToolChainEditor = forwardRef(function EnhancedToolChainEditor(
+	{
+		toolSets = defaultToolSets,
+		onWorkflowChange,
+		onToolSetLoad,
+		generatedNodes,
+		generatedEdges,
+	}: EnhancedToolChainEditorProps,
+	ref
+) {
 	// Initialize tool registry
 	const [toolRegistry] = useState(() => new EnhancedToolRegistry(toolSets))
 
@@ -290,54 +293,49 @@ export default function EnhancedToolChainEditor({
 	}
 
 	// Initial nodes
-	const initialNodes: Node[] = [
-		{
-			id: 'input-1',
-			type: 'inputNode',
-			data: {
-				value: '',
-				onChange: (val: string) => {},
-				onSubmit: () => {},
-				onDeleteNode: handleDeleteNode,
-			},
-			position: { x: 100, y: 200 },
-		},
-		{
-			id: 'output-1',
-			type: 'outputNode',
-			data: { value: '', onDeleteNode: handleDeleteNode },
-			position: { x: 600, y: 200 },
-		},
-	]
+	const initialNodes: Node[] = []
 
 	const initialEdges: Edge[] = []
 
 	const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
 	const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
 
-	// Add node
-	function handleAddNode(type: string, toolId?: string) {
-		const newNodeId = `${type}-${nodeCounter}`
+	// Add initialValue param for step drag-and-drop
+	function handleAddNode(type: string, toolId?: string, initialValue?: string, idx?: number) {
+		const newNodeId = `${type}-${Date.now()}-${Math.floor(Math.random() * 100000)}`
 		const tool = toolId ? toolRegistry.getTool(toolId) : null
+		const label = type === 'inputNode' && typeof idx === 'number' ? `Input ${idx + 1}` : undefined
+		const y = typeof idx === 'number' ? 100 + idx * 120 : Math.random() * 300 + 100
 
 		const newNode: Node = {
 			id: newNodeId,
 			type: type as any,
 			data: {
-				value: '',
+				value: initialValue || '',
 				result: '',
 				loading: false,
 				tool: tool,
+				label,
 				onChange: (val: string) => handleInputChange(newNodeId, val),
 				onSubmit: () => handleSubmit(newNodeId),
 				onDeleteNode: handleDeleteNode,
 			},
-			position: { x: Math.random() * 400 + 200, y: Math.random() * 300 + 100 },
+			position: { x: 200, y },
 		}
 
 		setNodes((nds) => [...nds, newNode])
 		setNodeCounter((counter) => counter + 1)
 	}
+
+	// Expose addInputNodeForStep and clearAllNodes to parent via ref
+	useImperativeHandle(ref, () => ({
+		addInputNodeForStep: (step: string, idx?: number) =>
+			handleAddNode('inputNode', undefined, step, idx),
+		clearAllNodes: () => {
+			setNodes([])
+			setEdges([])
+		},
+	}))
 
 	// Handle connections
 	const onConnect = useCallback(
@@ -642,4 +640,6 @@ export default function EnhancedToolChainEditor({
 			</ReactFlow>
 		</div>
 	)
-}
+})
+
+export default EnhancedToolChainEditor

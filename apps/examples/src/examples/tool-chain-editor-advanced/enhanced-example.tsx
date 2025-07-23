@@ -1,7 +1,211 @@
-import { useEffect, useState } from 'react'
-import ChatbotToolchainParser from './chatbot-toolchain-parser'
+import React, { useEffect, useState } from 'react'
 import EnhancedToolChainEditor from './enhanced-tool-chain-editor'
 import { EnhancedToolRegistry, defaultToolSets } from './enhanced-tool-registry'
+
+// ==================== New ChatbotPanel and StepsPanel Placeholders ====================
+function ChatbotPanel({
+	chatHistory,
+	onSendPrompt,
+	isLoading,
+}: {
+	chatHistory: { role: 'user' | 'ai'; content: string; isLoading?: boolean }[]
+	onSendPrompt: (prompt: string) => void
+	isLoading: boolean
+}) {
+	const [inputValue, setInputValue] = useState('')
+	const chatEndRef = React.useRef<HTMLDivElement>(null)
+	const [ellipsis, setEllipsis] = React.useState('')
+
+	// Animate ellipsis when loading
+	React.useEffect(() => {
+		if (isLoading) {
+			let i = 0
+			const interval = setInterval(() => {
+				setEllipsis('.'.repeat((i % 3) + 1))
+				i++
+			}, 400)
+			return () => clearInterval(interval)
+		} else {
+			setEllipsis('')
+			return undefined
+		}
+	}, [isLoading])
+
+	React.useEffect(() => {
+		chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+	}, [chatHistory])
+
+	return (
+		<div
+			style={{
+				height: '100%',
+				display: 'flex',
+				flexDirection: 'column',
+				background: 'linear-gradient(135deg, #f8fafc 0%, #e3e9f7 100%)',
+				borderRight: '1px solid #e3e3e3',
+				boxShadow: '2px 0 12px #e3e3e3',
+			}}
+		>
+			{/* Header */}
+			<div
+				style={{
+					display: 'flex',
+					alignItems: 'center',
+					gap: 12,
+					padding: '20px 24px 12px 24px',
+					borderBottom: '1px solid #e3e3e3',
+					background: 'rgba(255,255,255,0.85)',
+					boxShadow: '0 2px 8px #f0f0f0',
+				}}
+			>
+				<span style={{ fontSize: 28, color: '#6f42c1' }}>💬</span>
+				<span style={{ fontWeight: 700, fontSize: 20, color: '#333', letterSpacing: 0.5 }}>
+					AI Assistant
+				</span>
+			</div>
+
+			{/* Chat History */}
+			<div
+				style={{ flex: 1, overflowY: 'auto', padding: '24px 16px 12px 16px', background: 'none' }}
+			>
+				{chatHistory.length === 0 && (
+					<div style={{ textAlign: 'center', color: '#aaa', marginTop: 60, fontSize: 16 }}>
+						Start a conversation with your AI assistant!
+					</div>
+				)}
+				{chatHistory.map((msg, i) => (
+					<div
+						key={i}
+						style={{
+							display: 'flex',
+							justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+							marginBottom: 16,
+						}}
+					>
+						<div
+							style={{
+								background:
+									msg.role === 'user'
+										? 'linear-gradient(135deg, #6f42c1 60%, #8e7be7 100%)'
+										: 'linear-gradient(135deg, #f1f8e9 60%, #e3f2fd 100%)',
+								color: msg.role === 'user' ? '#fff' : '#333',
+								borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+								padding: '12px 16px',
+								maxWidth: 320,
+								fontSize: 15,
+								boxShadow: msg.role === 'user' ? '0 2px 8px #d1c4e9' : '0 2px 8px #e3e3e3',
+								whiteSpace: 'pre-line',
+							}}
+						>
+							{msg.isLoading ? `……${ellipsis}` : msg.content}
+						</div>
+					</div>
+				))}
+				<div ref={chatEndRef} />
+			</div>
+
+			{/* Input Area */}
+			<div
+				style={{
+					padding: '18px 20px',
+					borderTop: '1px solid #e3e3e3',
+					background: 'rgba(255,255,255,0.95)',
+					boxShadow: '0 -2px 8px #f0f0f0',
+				}}
+			>
+				<form
+					onSubmit={(e) => {
+						e.preventDefault()
+						if (inputValue.trim()) {
+							onSendPrompt(inputValue)
+							setInputValue('')
+						}
+					}}
+					style={{ display: 'flex', alignItems: 'center', gap: 10 }}
+				>
+					<input
+						type="text"
+						name="prompt"
+						placeholder="Type your task or question..."
+						value={inputValue}
+						onChange={(e) => setInputValue(e.target.value)}
+						style={{
+							flex: 1,
+							padding: '12px 16px',
+							borderRadius: 24,
+							border: '1.5px solid #c3c3e5',
+							fontSize: 15,
+							outline: 'none',
+							background: '#f7f7fb',
+							transition: 'border 0.2s',
+						}}
+						onFocus={(e) => (e.currentTarget.style.border = '1.5px solid #6f42c1')}
+						onBlur={(e) => (e.currentTarget.style.border = '1.5px solid #c3c3e5')}
+					/>
+					<button
+						type="submit"
+						style={{
+							marginLeft: 4,
+							padding: '10px 22px',
+							borderRadius: 24,
+							background: 'linear-gradient(90deg, #6f42c1 60%, #8e7be7 100%)',
+							color: '#fff',
+							border: 'none',
+							fontWeight: 600,
+							fontSize: 15,
+							boxShadow: '0 2px 8px #d1c4e9',
+							cursor: 'pointer',
+							transition: 'background 0.2s, box-shadow 0.2s',
+						}}
+						onMouseOver={(e) =>
+							(e.currentTarget.style.background =
+								'linear-gradient(90deg, #8e7be7 60%, #6f42c1 100%)')
+						}
+						onMouseOut={(e) =>
+							(e.currentTarget.style.background =
+								'linear-gradient(90deg, #6f42c1 60%, #8e7be7 100%)')
+						}
+					>
+						Send
+					</button>
+				</form>
+			</div>
+		</div>
+	)
+}
+
+function StepsPanel({
+	steps,
+	onDragStart,
+}: {
+	steps: string[]
+	onDragStart: (step: string, e: React.DragEvent) => void
+}) {
+	// Placeholder for draggable steps UI
+	return (
+		<div style={{ padding: 16, background: '#f8f9fa', borderBottom: '1px solid #eee' }}>
+			<h4 style={{ margin: '0 0 8px 0' }}>AI-Suggested Steps</h4>
+			<div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+				{steps.map((step, i) => (
+					<div
+						key={i}
+						style={{
+							background: '#fff',
+							border: '1px solid #ddd',
+							borderRadius: 6,
+							padding: 8,
+							cursor: 'grab',
+						}}
+						draggable
+						onDragStart={(e) => onDragStart(step, e)}
+					>
+						{step}
+					</div>
+				))}
+			</div>
+		</div>
+	)
+}
 
 // ==================== Enhanced Example Component ====================
 
@@ -13,9 +217,17 @@ export default function EnhancedToolChainEditorExample() {
 	const [statistics, setStatistics] = useState<any>(null)
 	const [showToolSets, setShowToolSets] = useState(false)
 	const [showWorkflowInfo, setShowWorkflowInfo] = useState(false)
-	const [showChatbot, setShowChatbot] = useState(false)
-	const [generatedNodes, setGeneratedNodes] = useState<any[]>([])
-	const [generatedEdges, setGeneratedEdges] = useState<any[]>([])
+	// Remove showChatbot, generatedNodes, generatedEdges for new flow
+
+	// Chatbot and steps state
+	const [chatHistory, setChatHistory] = useState<
+		{ role: 'user' | 'ai'; content: string; isLoading?: boolean }[]
+	>([])
+	const [steps, setSteps] = useState<string[]>([])
+	const [isLoading, setIsLoading] = useState(false)
+
+	// Ref to EnhancedToolChainEditor instance to call handleAddNode
+	const toolChainEditorRef = React.useRef<any>(null)
 
 	// Initialize tool registry
 	const [toolRegistry] = useState(() => new EnhancedToolRegistry(toolSets))
@@ -112,8 +324,8 @@ export default function EnhancedToolChainEditorExample() {
 
 	// Handle toolchain generation
 	const handleGenerateToolchain = (nodes: any[], edges: any[]) => {
-		setGeneratedNodes(nodes)
-		setGeneratedEdges(edges)
+		// setGeneratedNodes(nodes) // Removed
+		// setGeneratedEdges(edges) // Removed
 		console.log('Generated toolchain:', { nodes, edges })
 	}
 
@@ -121,263 +333,162 @@ export default function EnhancedToolChainEditorExample() {
 	const resetWorkflow = () => {
 		setWorkflow(null)
 		setResults({})
-		setGeneratedNodes([])
-		setGeneratedEdges([])
+		// setGeneratedNodes([]) // Removed
+		// setGeneratedEdges([]) // Removed
+	}
+
+	// Add a function to clear all nodes in the workflow
+	const clearWorkflow = () => {
+		if (toolChainEditorRef.current && toolChainEditorRef.current.clearAllNodes) {
+			toolChainEditorRef.current.clearAllNodes()
+		}
+	}
+
+	// When steps change, clear and add input nodes for all steps
+	React.useEffect(() => {
+		if (
+			steps.length > 0 &&
+			toolChainEditorRef.current &&
+			toolChainEditorRef.current.addInputNodeForStep
+		) {
+			clearWorkflow()
+			steps.forEach((step: string, idx: number) => {
+				toolChainEditorRef.current.addInputNodeForStep(step, idx)
+			})
+		}
+	}, [steps])
+
+	// When a new prompt is sent, clear steps and workflow
+	const handleSendPrompt = async (prompt: string) => {
+		setSteps([])
+		clearWorkflow()
+		setChatHistory((h) => [...h, { role: 'user', content: prompt }])
+		setIsLoading(true)
+		// Add loading indicator message
+		setChatHistory((h) => [...h, { role: 'ai', content: '……', isLoading: true }])
+
+		const engineeredPrompt = `List exactly 3 to 5 concise steps to answer the following question. Only output the steps, each on a new line, numbered (1. 2. 3. ...). Do not include any introduction, explanation, markdown, or optional text.\n\nQuestion: ${prompt}`
+
+		try {
+			const response = await fetch('/api/tools/deepseek-agent', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ question: engineeredPrompt }),
+			})
+			const data = await response.json()
+			if (data.success && data.result && data.result.response) {
+				const answer = data.result.response.trim()
+				// Replace the last AI loading message with the real answer
+				setChatHistory((h) => {
+					const idx = h
+						.map((m, i) => (m.role === 'ai' && m.isLoading ? i : -1))
+						.filter((i) => i !== -1)
+						.pop()
+					if (typeof idx === 'number' && idx >= 0) {
+						return [...h.slice(0, idx), { role: 'ai', content: answer }]
+					}
+					return [...h, { role: 'ai', content: answer }]
+				})
+
+				const stepLines = answer.split(/\n|\r/).filter((line: string) => /^\s*\d+\./.test(line))
+				const stepsExtracted = stepLines
+					.map((line: string) => line.replace(/^\s*\d+\.\s*/, '').trim())
+					.filter((s: string) => Boolean(s))
+				if (stepsExtracted.length >= 3) {
+					setSteps(stepsExtracted)
+				} else {
+					const fallbackSteps = answer
+						.split(/\.|\n/)
+						.map((s: string) => s.trim())
+						.filter((s: string) => Boolean(s))
+					setSteps(fallbackSteps.slice(0, 5))
+				}
+			} else {
+				setChatHistory((h) => {
+					const idx = h
+						.map((m, i) => (m.role === 'ai' && m.isLoading ? i : -1))
+						.filter((i) => i !== -1)
+						.pop()
+					if (typeof idx === 'number' && idx >= 0) {
+						return [
+							...h.slice(0, idx),
+							{ role: 'ai', content: 'Sorry, I could not get a response from the LLM.' },
+						]
+					}
+					return [...h, { role: 'ai', content: 'Sorry, I could not get a response from the LLM.' }]
+				})
+				const mockSteps = prompt
+					.split(/\band\b|\./i)
+					.map((s) => s.trim())
+					.filter(Boolean)
+				setSteps(mockSteps)
+			}
+		} catch (err) {
+			setChatHistory((h) => {
+				const idx = h
+					.map((m, i) => (m.role === 'ai' && m.isLoading ? i : -1))
+					.filter((i) => i !== -1)
+					.pop()
+				if (typeof idx === 'number' && idx >= 0) {
+					return [
+						...h.slice(0, idx),
+						{ role: 'ai', content: 'Sorry, there was an error calling the LLM.' },
+					]
+				}
+				return [...h, { role: 'ai', content: 'Sorry, there was an error calling the LLM.' }]
+			})
+			const mockSteps = prompt
+				.split(/\band\b|\./i)
+				.map((s) => s.trim())
+				.filter(Boolean)
+			setSteps(mockSteps)
+		}
+		setIsLoading(false)
+	}
+
+	// Drag start handler for steps (to be integrated with tool chain editor)
+	const handleStepDragStart = (step: string, e: React.DragEvent) => {
+		e.dataTransfer.setData('text/plain', step)
 	}
 
 	return (
-		<div className="tldraw__editor">
-			{/* Floating Control Panel */}
+		<div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
+			{/* Left: Chatbot Panel */}
 			<div
 				style={{
-					position: 'absolute',
-					top: 20,
-					right: 20,
-					zIndex: 1000,
-					background: 'rgba(255, 255, 255, 0.95)',
-					border: '1px solid #e0e0e0',
-					borderRadius: 8,
-					padding: 16,
-					boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-					backdropFilter: 'blur(10px)',
-					minWidth: 200,
+					width: '40%',
+					minWidth: 320,
+					maxWidth: 520,
+					height: '100%',
+					boxShadow: '2px 0 8px #eee',
+					zIndex: 2,
 				}}
 			>
-				<div style={{ marginBottom: 12 }}>
-					<h3 style={{ margin: '0 0 8px 0', fontSize: 16, fontWeight: 'bold' }}>
-						🚀 Enhanced Tool Chain Editor
-					</h3>
-					{statistics && (
-						<div style={{ fontSize: 11, color: '#666' }}>
-							📦 {statistics.totalToolSets} Sets • 🛠️ {statistics.totalTools} Tools • 📂{' '}
-							{statistics.categories} Categories
-						</div>
-					)}
-				</div>
-
-				<div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-					<button
-						onClick={() => setShowChatbot(true)}
-						style={{
-							padding: '8px 12px',
-							background: '#6f42c1',
-							color: 'white',
-							border: 'none',
-							borderRadius: 4,
-							cursor: 'pointer',
-							fontSize: 12,
-							fontWeight: '500',
-						}}
-					>
-						🤖 AI Generator
-					</button>
-
-					<button
-						onClick={() => setShowToolSets(!showToolSets)}
-						style={{
-							padding: '8px 12px',
-							background: showToolSets ? '#007bff' : '#f8f9fa',
-							color: showToolSets ? 'white' : '#333',
-							border: '1px solid #dee2e6',
-							borderRadius: 4,
-							cursor: 'pointer',
-							fontSize: 12,
-							fontWeight: '500',
-						}}
-					>
-						📋 Tool Sets
-					</button>
-
-					{workflow && (
-						<button
-							onClick={() => setShowWorkflowInfo(!showWorkflowInfo)}
-							style={{
-								padding: '8px 12px',
-								background: showWorkflowInfo ? '#28a745' : '#f8f9fa',
-								color: showWorkflowInfo ? 'white' : '#333',
-								border: '1px solid #dee2e6',
-								borderRadius: 4,
-								cursor: 'pointer',
-								fontSize: 12,
-								fontWeight: '500',
-							}}
-						>
-							🔗 Workflow
-						</button>
-					)}
-
-					<div style={{ display: 'flex', gap: 4 }}>
-						<button
-							onClick={loadToolSetsFromBackend}
-							disabled={loading}
-							title="Load ToolSets"
-							style={{
-								padding: '6px 8px',
-								background: loading ? '#ccc' : '#6c757d',
-								color: 'white',
-								border: 'none',
-								borderRadius: 4,
-								cursor: loading ? 'not-allowed' : 'pointer',
-								fontSize: 11,
-							}}
-						>
-							{loading ? '⏳' : '📥'}
-						</button>
-
-						<button
-							onClick={saveWorkflowToBackend}
-							disabled={!workflow}
-							title="Save Workflow"
-							style={{
-								padding: '6px 8px',
-								background: !workflow ? '#ccc' : '#28a745',
-								color: 'white',
-								border: 'none',
-								borderRadius: 4,
-								cursor: !workflow ? 'not-allowed' : 'pointer',
-								fontSize: 11,
-							}}
-						>
-							💾
-						</button>
-
-						<button
-							onClick={executeWorkflow}
-							disabled={!workflow || loading}
-							title="Run Workflow"
-							style={{
-								padding: '6px 8px',
-								background: !workflow || loading ? '#ccc' : '#ffc107',
-								color: 'white',
-								border: 'none',
-								borderRadius: 4,
-								cursor: !workflow || loading ? 'not-allowed' : 'pointer',
-								fontSize: 11,
-							}}
-						>
-							{loading ? '⏳' : '▶️'}
-						</button>
-
-						<button
-							onClick={resetWorkflow}
-							disabled={!workflow}
-							title="Reset Workflow"
-							style={{
-								padding: '6px 8px',
-								background: !workflow ? '#ccc' : '#dc3545',
-								color: 'white',
-								border: 'none',
-								borderRadius: 4,
-								cursor: !workflow ? 'not-allowed' : 'pointer',
-								fontSize: 11,
-							}}
-						>
-							🔄
-						</button>
-					</div>
+				<ChatbotPanel
+					chatHistory={chatHistory}
+					onSendPrompt={handleSendPrompt}
+					isLoading={isLoading}
+				/>
+			</div>
+			{/* Right: Only Tool Chain Editor, no StepsPanel */}
+			<div
+				style={{
+					width: '60%',
+					height: '100%',
+					display: 'flex',
+					flexDirection: 'column',
+					position: 'relative',
+				}}
+			>
+				<div style={{ flex: 1, minHeight: 0 }}>
+					<EnhancedToolChainEditor
+						ref={toolChainEditorRef}
+						toolSets={toolSets}
+						onWorkflowChange={handleWorkflowChange}
+						onToolSetLoad={handleToolSetLoad}
+					/>
 				</div>
 			</div>
-
-			{/* Floating Tool Sets Info */}
-			{showToolSets && (
-				<div
-					style={{
-						position: 'absolute',
-						top: 20,
-						left: 20,
-						zIndex: 1000,
-						background: 'rgba(255, 255, 255, 0.95)',
-						border: '1px solid #e0e0e0',
-						borderRadius: 8,
-						padding: 16,
-						boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-						backdropFilter: 'blur(10px)',
-						maxWidth: 300,
-						maxHeight: 400,
-						overflow: 'auto',
-					}}
-				>
-					<h3 style={{ margin: '0 0 12px 0', fontSize: 14, fontWeight: 'bold' }}>
-						📋 Available Tool Sets
-					</h3>
-					<div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-						{toolSets.map((toolSet) => (
-							<div
-								key={toolSet.id}
-								style={{
-									padding: '8px 12px',
-									background: '#f8f9fa',
-									border: '1px solid #e9ecef',
-									borderRadius: 4,
-									fontSize: 11,
-								}}
-							>
-								<div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-									<span style={{ fontSize: 14 }}>{toolSet.icon}</span>
-									<strong style={{ fontSize: 12 }}>{toolSet.name}</strong>
-								</div>
-								<p
-									style={{
-										margin: '0 0 4px 0',
-										fontSize: 10,
-										color: '#666',
-										lineHeight: 1.2,
-									}}
-								>
-									{toolSet.description}
-								</p>
-								<div style={{ fontSize: 9, color: '#888' }}>
-									📂 {toolSet.category} • 🛠️ {toolSet.tools.length} tools
-								</div>
-							</div>
-						))}
-					</div>
-				</div>
-			)}
-
-			{/* Floating Workflow Info */}
-			{showWorkflowInfo && workflow && (
-				<div
-					style={{
-						position: 'absolute',
-						bottom: 20,
-						left: 20,
-						zIndex: 1000,
-						background: 'rgba(255, 255, 255, 0.95)',
-						border: '1px solid #e0e0e0',
-						borderRadius: 8,
-						padding: 16,
-						boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-						backdropFilter: 'blur(10px)',
-					}}
-				>
-					<h3 style={{ margin: '0 0 8px 0', fontSize: 14, fontWeight: 'bold' }}>
-						🔗 Current Workflow
-					</h3>
-					<div style={{ fontSize: 11, color: '#666', display: 'flex', gap: 20 }}>
-						<div>📊 Nodes: {workflow.nodes.length}</div>
-						<div>🔗 Connections: {workflow.edges.length}</div>
-						<div>🛠️ Tools used: {workflow.nodes.filter((n: any) => n.data.tool).length}</div>
-					</div>
-				</div>
-			)}
-
-			{/* Main Tool Chain Editor - Full Screen */}
-			<EnhancedToolChainEditor
-				toolSets={toolSets}
-				onWorkflowChange={handleWorkflowChange}
-				onToolSetLoad={handleToolSetLoad}
-				generatedNodes={generatedNodes}
-				generatedEdges={generatedEdges}
-			/>
-
-			{/* Chatbot Toolchain Parser */}
-			{showChatbot && (
-				<ChatbotToolchainParser
-					onGenerateToolchain={handleGenerateToolchain}
-					onClose={() => setShowChatbot(false)}
-				/>
-			)}
 		</div>
 	)
 }
