@@ -717,7 +717,7 @@ export default function EnhancedToolChainEditorExample() {
 			{/* Right: Only Tool Chain Editor, no StepsPanel */}
 			<div
 				style={{
-					width: '60%',
+					flex: 1,
 					height: '100%',
 					display: 'flex',
 					flexDirection: 'column',
